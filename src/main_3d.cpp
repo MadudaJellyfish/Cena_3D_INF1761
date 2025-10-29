@@ -57,6 +57,7 @@ public:
        // m_trf->Rotate(0, m_angle, 0, 1);
         m_trf->Translate(m_radius*cos(m_angle), 0.0f, m_radius * sin(m_angle));
     }
+	float getAcummulateAngle() const { return m_angle; }
 
 };
 
@@ -99,6 +100,10 @@ static float viewer_pos[3] = {2.0f, 3.5f, 4.0f};
 static ScenePtr scene;
 static Camera3DPtr camera;
 static ArcballPtr arcball;
+static MoveAstroPtr move_terra;
+static MoveAstroPtr move_lua;
+static bool canGoToTerra = false;
+static bool canGoToLua = false;
 
 static void initialize (void)
 {
@@ -106,6 +111,8 @@ static void initialize (void)
   glClearColor(0.0f,0.0f,0.0f,1.0f);
   // enable depth test 
   glEnable(GL_DEPTH_TEST);
+  glEnable(GL_CULL_FACE); 
+  glCullFace(GL_BACK);
   //glEnable(GL_CULL_FACE);  // cull back faces
 
   // create objects
@@ -130,8 +137,11 @@ static void initialize (void)
 
   AppearancePtr sun = Texture::Make("decal", "images/sun.jpg");
   AppearancePtr earth = Texture::Make("decal", "images/earth.jpg");
+  AppearancePtr earth_normal = Texture::Make("normalMap", "images/earth-normal.png");
   AppearancePtr mercury = Texture::Make("decal", "images/mercury.jpg");
+  AppearancePtr mercury_normal = Texture::Make("normalMap", "images/mercury-normal.jpg");
   AppearancePtr moon = Texture::Make("decal", "images/moon.jpeg");
+  AppearancePtr moon_normal = Texture::Make("normalMap", "images/moon-normal.png");
   
 
   //transf. sol
@@ -174,7 +184,14 @@ static void initialize (void)
   Error::Check("after shps");
   //
 
-    // create shader
+  //shader rugosidade
+  ShaderPtr shd_rugos = Shader::Make(light, "world");
+  shd_rugos->AttachVertexShader("shaders/ilum_vert/vertex_normal.glsl");
+  shd_rugos->AttachFragmentShader("shaders/ilum_vert/fragment_normal.glsl");
+  shd_rugos->Link();
+
+
+  // create shader
   ShaderPtr shader = Shader::Make(light,"world");
   shader->AttachVertexShader("shaders/ilum_vert/vertex.glsl");
   shader->AttachFragmentShader("shaders/ilum_vert/fragment.glsl");
@@ -191,14 +208,14 @@ static void initialize (void)
 
   ///criacao do nós da cena
 
-  auto lua_node = Node::Make(shd_tex,trf_lua, { white, moon }, { lua });
+  auto lua_node = Node::Make(shd_rugos,trf_lua, { white, moon, moon_normal }, { lua });
   auto lua_orbita_node = Node::Make(trf_orbita_lua, {}, {}, { lua_node });
 
-  auto terra_node = Node::Make(shd_tex,trf_terra, { white, earth }, { terra }, {});
-  auto terra_rotacao_node = Node::Make(trf_rotacao_terra, {}, {}, { terra_node, lua_orbita_node });
-  auto terra_orbita_node = Node::Make(trf_orbita_terra, {}, {}, { terra_rotacao_node });
+  auto terra_node = Node::Make(shd_rugos,trf_terra, { white, earth, earth_normal }, { terra }, {});
+  auto terra_rotacao_node = Node::Make(trf_rotacao_terra, {}, {}, { terra_node});
+  auto terra_orbita_node = Node::Make(trf_orbita_terra, {}, {}, { terra_rotacao_node, lua_orbita_node });
 
-  auto mercurio_node = Node::Make(shd_tex,trf_mercurio, { white, mercury }, { mercurio }, {});
+  auto mercurio_node = Node::Make(shd_rugos,trf_mercurio, { white, mercury, mercury_normal }, { mercurio }, {});
   auto mercurio_orbita_node = Node::Make(trf_orbita_mercurio, {}, {}, { mercurio_node });
 
   auto sol_node = Node::Make(shd_tex,trf_sol, { sun_material, sun }, { sol }, { mercurio_orbita_node, terra_orbita_node });
@@ -210,9 +227,12 @@ static void initialize (void)
   NodePtr root = Node::Make(shader,
     {sol_node}
   );
+  
+  move_terra = MoveAstro::Make(trf_orbita_terra, 1.0f, 3.0f);
+  move_lua = MoveAstro::Make(trf_orbita_lua, 2.0f, 1.5f);
   scene = Scene::Make(root);
-  scene->AddEngine(MoveAstro::Make(trf_orbita_terra, 1.0f, 3.0f)); // Raio maior para a Terra
-  scene->AddEngine(MoveAstro::Make(trf_orbita_lua, 3.0f, 1.5f)); // Raio menor para a Lua (relativo à Terra)
+  scene->AddEngine(move_terra); // Raio maior para a Terra
+  scene->AddEngine(move_lua); // Raio menor para a Lua (relativo à Terra)
   scene->AddEngine(MoveAstro::Make(trf_orbita_mercurio, 1.5f, 1.5f)); // Raio menor para Mercúrio
   scene->AddEngine(AxisRotation::Make(trf_rotacao_terra, 20.f, 0.45f)); // Velocidade de rotação menor
 }
@@ -236,6 +256,75 @@ static void keyboard (GLFWwindow* window, int key, int scancode, int action, int
 {
   if (key == GLFW_KEY_Q && action == GLFW_PRESS)
     glfwSetWindowShouldClose(window, GLFW_TRUE);
+
+  if (key == GLFW_KEY_T && action == GLFW_PRESS) 
+  {
+      if(canGoToTerra)
+      {
+          glCullFace(GL_BACK);
+          canGoToTerra = false;
+		  canGoToLua = true;
+      } 
+	  else
+      {
+          glCullFace(GL_FRONT);
+          canGoToTerra = true;
+		  canGoToLua = false;
+      }
+        
+  }
+  if(key == GLFW_KEY_L && action == GLFW_PRESS)
+  {
+      if (canGoToLua)
+      {
+          canGoToLua = false;
+          canGoToTerra = true;
+      }
+      else
+      {
+          canGoToLua = true;
+		  canGoToTerra = false;
+      }
+  }
+}
+
+static void changeCameraPos()
+{
+	float raioTerra = 1.35f;
+    float angleTerra = move_terra->getAcummulateAngle();
+    if (canGoToTerra)
+    {
+        camera->SetEye(raioTerra*cos(angleTerra), 0.0f, raioTerra*sin(angleTerra));
+        camera->SetCenter(0.0f, 0.0f, 0.0f);
+    }
+    else if (canGoToLua)
+    {
+        float angle = move_lua->getAcummulateAngle();
+		float raioLua = 1.5f; // distância da Terra + distância da Lua em relação à Terra
+
+        glm::vec3 terra_pos(raioTerra * cos(angleTerra),
+            0.0f,
+            raioTerra * sin(angleTerra));
+
+        glm::vec3 lua_pos_rel(raioLua * cos(angle),
+            0.0f,
+            raioLua * sin(angle));
+
+        glm::vec3 moon_world_pos = terra_pos + lua_pos_rel;
+
+        camera->SetCenter(moon_world_pos.x, moon_world_pos.y, moon_world_pos.z);
+
+        
+        camera->SetEye(moon_world_pos.x - 2.0f, 
+            moon_world_pos.y + 1.0f, 
+            moon_world_pos.z + 2.0f);
+
+    }
+    else
+    {
+        camera->SetEye(viewer_pos[0], viewer_pos[1], viewer_pos[2]);
+        camera->SetCenter(0.0f, 0.0f, 0.0f);
+    }
 }
 
 static void resize (GLFWwindow* win, int width, int height)
@@ -275,6 +364,7 @@ static void mousebutton (GLFWwindow* win, int button, int action, int mods)
 static void update(float dt)
 {
     scene->Update(dt);
+	changeCameraPos();
 }
 
 int main ()
