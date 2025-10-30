@@ -243,7 +243,7 @@ static void initialize (void)
     {sol_node}
 });
   
-  move_terra = MoveAstro::Make(trf_orbita_terra, 1.0f, 4.0f);
+  move_terra = MoveAstro::Make(trf_orbita_terra, 1.0f, 3.0f);
   move_lua = MoveAstro::Make(trf_orbita_lua, 2.0f, 1.5f);
   scene = Scene::Make(root);
   scene->AddEngine(move_terra); // Raio maior para a Terra
