@@ -5,8 +5,12 @@
 #ifdef _WIN32
 //#define GLAD_GL_IMPLEMENTATION // Necessary for headeronly version.
 #include <glad/glad.h>
+
 #elif __APPLE__
 #include <OpenGL/gl3.h>
+
+#elif __linux__
+#include <glad/glad.h>
 #endif
 
 ColorPtr Color::Make (float r, float g, float b, float a)

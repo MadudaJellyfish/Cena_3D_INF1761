@@ -1,11 +1,18 @@
 
 #ifdef _WIN32
-#define GLAD_GL_IMPLEMENTATION // Necessary for headeronly version.
+#include <windows.h>
+// Use glad to initialize OpenGL context on Windows
 #include <glad/glad.h>
+#include <GLFW/glfw3.h>
+
 #elif __APPLE__
 #include <OpenGL/gl3.h>
-#endif
 #include <GLFW/glfw3.h>
+
+#elif __linux__
+#include <glad/glad.h>
+#include <GLFW/glfw3.h>
+#endif
 
 #include "arcball.h"
 #include "scene.h"
@@ -22,6 +29,8 @@
 #include "color.h"
 #include "quad.h"
 #include "engine.h"
+#include "texcube.h"
+#include "skyBlock.h"
 
 #include <iostream>
 #include <cassert>
@@ -118,7 +127,7 @@ static void initialize (void)
   // create objects
   camera = Camera3D::Make(viewer_pos[0],viewer_pos[1],viewer_pos[2]);
 
-  /// fim do nó de fundo
+  /// fim do nï¿½ de fundo
   arcball = camera->CreateArcball();
 
   //LightPtr light = ObjLight::Make(viewer_pos[0],viewer_pos[1],viewer_pos[2]);
@@ -135,6 +144,7 @@ static void initialize (void)
   AppearancePtr beutifull_green = Material::Make(0.0f, 0.75f, 0.68f);
   AppearancePtr light_green = Material::Make(0.5f, 0.0f, 0.0f);
 
+  AppearancePtr sky = TexCube::Make("sky","images/skytest.png");
   AppearancePtr sun = Texture::Make("decal", "images/sun.jpg");
   AppearancePtr earth = Texture::Make("decal", "images/earth.jpg");
   AppearancePtr earth_normal = Texture::Make("normalMap", "images/earth-normal.png");
@@ -148,7 +158,7 @@ static void initialize (void)
   TransformPtr trf_sol = Transform::Make();
   trf_sol->Scale(0.5f, 0.5f, 0.5f);
 
-  //transf. mercúrio
+  //transf. mercï¿½rio
   TransformPtr trf_orbita_mercurio = Transform::Make();
   TransformPtr trf_mercurio = Transform::Make();
   trf_mercurio->Scale(0.15f, 0.15f, 0.15f);
@@ -171,15 +181,16 @@ static void initialize (void)
   TransformPtr trf_orbita_terra = Transform::Make();
   TransformPtr trf_rotacao_terra = Transform::Make();
 
-  //contrução das geometrias
+  //contruï¿½ï¿½o das geometrias
   Error::Check("before shps");
-  Error::Check("before sphere");
+  ShapePtr ceu = SkyBlock::Make();
+  Error::Check("before sun");
   ShapePtr sol = Sphere::Make();
   Error::Check("before terra");
   ShapePtr terra = Sphere::Make();
   Error::Check("before lua");
   ShapePtr lua = Sphere::Make();
-  Error::Check("before mercúrio");
+  Error::Check("before mercï¿½rio");
   ShapePtr mercurio = Sphere::Make();
   Error::Check("after shps");
   //
@@ -204,9 +215,14 @@ static void initialize (void)
   shd_tex->AttachFragmentShader("shaders/ilum_vert/fragment_texture.glsl");
   shd_tex->Link();
 
+  ShaderPtr shd_sky = Shader::Make();
+  shd_sky->AttachVertexShader("shaders/ilum_vert/vertex_sky.glsl");
+  shd_sky->AttachFragmentShader("shaders/ilum_vert/fragment_sky.glsl");
+  shd_sky->Link();
+ 
   // build scene
 
-  ///criacao do nós da cena
+  ///criacao do nï¿½s da cena
 
   auto lua_node = Node::Make(shd_rugos,trf_lua, { white, moon, moon_normal }, { lua });
   auto lua_orbita_node = Node::Make(trf_orbita_lua, {}, {}, { lua_node });
@@ -222,19 +238,18 @@ static void initialize (void)
 
   ///
 
-
-
-  NodePtr root = Node::Make(shader,
+  NodePtr root = Node::Make(shader, {white, sky}, {
+    Node::Make(shd_sky, {sky}, {ceu}),
     {sol_node}
-  );
+});
   
   move_terra = MoveAstro::Make(trf_orbita_terra, 1.0f, 3.0f);
   move_lua = MoveAstro::Make(trf_orbita_lua, 2.0f, 1.5f);
   scene = Scene::Make(root);
   scene->AddEngine(move_terra); // Raio maior para a Terra
-  scene->AddEngine(move_lua); // Raio menor para a Lua (relativo à Terra)
-  scene->AddEngine(MoveAstro::Make(trf_orbita_mercurio, 1.5f, 1.5f)); // Raio menor para Mercúrio
-  scene->AddEngine(AxisRotation::Make(trf_rotacao_terra, 20.f, 0.45f)); // Velocidade de rotação menor
+  scene->AddEngine(move_lua); // Raio menor para a Lua (relativo ï¿½ Terra)
+  scene->AddEngine(MoveAstro::Make(trf_orbita_mercurio, 1.5f, 1.5f)); // Raio menor para Mercï¿½rio
+  scene->AddEngine(AxisRotation::Make(trf_rotacao_terra, 20.f, 0.45f)); // Velocidade de rotaï¿½ï¿½o menor
 }
 
 static void display (GLFWwindow* win)
@@ -300,7 +315,7 @@ static void changeCameraPos()
     else if (canGoToLua)
     {
         float angle = move_lua->getAcummulateAngle();
-		float raioLua = 1.5f; // distância da Terra + distância da Lua em relação à Terra
+		float raioLua = 1.5f; // distï¿½ncia da Terra + distï¿½ncia da Lua em relaï¿½ï¿½o ï¿½ Terra
 
         glm::vec3 terra_pos(raioTerra * cos(angleTerra),
             0.0f,
@@ -393,6 +408,12 @@ int main ()
       exit(1);
   }
 #endif
+#if defined(__linux__) && defined(__glad_h_)
+  if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
+    printf("Failed to initialize GLAD OpenGL context\n");
+    exit(1);
+   }
+  #endif
   printf("OpenGL version: %s\n", glGetString(GL_VERSION));
 
   initialize();
