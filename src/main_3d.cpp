@@ -144,7 +144,7 @@ static void initialize (void)
   AppearancePtr beutifull_green = Material::Make(0.0f, 0.75f, 0.68f);
   AppearancePtr light_green = Material::Make(0.5f, 0.0f, 0.0f);
 
-  AppearancePtr sky = TexCube::Make("sky","images/skytest.png");
+  AppearancePtr sky = TexCube::Make("sky","images/cubemap.png");
   AppearancePtr sun = Texture::Make("decal", "images/sun.jpg");
   AppearancePtr earth = Texture::Make("decal", "images/earth.jpg");
   AppearancePtr earth_normal = Texture::Make("normalMap", "images/earth-normal.png");

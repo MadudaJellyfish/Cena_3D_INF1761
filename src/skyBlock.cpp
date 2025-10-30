@@ -74,7 +74,8 @@ void SkyBlock::Draw (StatePtr st)
     st->MultMatrix(m);
     st->LoadMatrices();  // update loaded matrices
     glDepthMask(GL_FALSE);
-    glEnable(GL_CULL_FACE);
+    GLboolean cullEnabled = glIsEnabled(GL_CULL_FACE);
+    if (cullEnabled) glDisable(GL_CULL_FACE);
     glCullFace(GL_FRONT);
     glBindVertexArray(m_vao);
     glBindBuffer(GL_ARRAY_BUFFER, m_coord_buffer);
@@ -82,7 +83,7 @@ void SkyBlock::Draw (StatePtr st)
     glDrawArrays(GL_TRIANGLES, 0, 36);
     glBindBuffer(GL_ARRAY_BUFFER, m_coord_buffer);
     glDisableVertexAttribArray(LOC::COORD);
-    glCullFace(GL_BACK);
+    if (cullEnabled) { glEnable(GL_CULL_FACE); glCullFace(GL_BACK); } // volta ao padrão do resto da cena
     glDepthMask(GL_TRUE);
     st->PopMatrix();
 }
