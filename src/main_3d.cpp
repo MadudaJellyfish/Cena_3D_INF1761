@@ -243,7 +243,7 @@ static void initialize (void)
     {sol_node}
 });
   
-  move_terra = MoveAstro::Make(trf_orbita_terra, 1.0f, 3.0f);
+  move_terra = MoveAstro::Make(trf_orbita_terra, 1.0f, 4.0f);
   move_lua = MoveAstro::Make(trf_orbita_lua, 2.0f, 1.5f);
   scene = Scene::Make(root);
   scene->AddEngine(move_terra); // Raio maior para a Terra
@@ -278,13 +278,13 @@ static void keyboard (GLFWwindow* window, int key, int scancode, int action, int
       {
           glCullFace(GL_BACK);
           canGoToTerra = false;
-		  canGoToLua = true;
+		  
       } 
 	  else
       {
           glCullFace(GL_FRONT);
           canGoToTerra = true;
-		  canGoToLua = false;
+		  
       }
         
   }
@@ -293,12 +293,12 @@ static void keyboard (GLFWwindow* window, int key, int scancode, int action, int
       if (canGoToLua)
       {
           canGoToLua = false;
-          canGoToTerra = true;
+          
       }
       else
       {
           canGoToLua = true;
-		  canGoToTerra = false;
+		  
       }
   }
 }
